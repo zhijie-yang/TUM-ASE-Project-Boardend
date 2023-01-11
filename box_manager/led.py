@@ -11,10 +11,12 @@ GPIO.setwarnings(False)
 GPIO.setup(PIN_LED_GREEN, GPIO.OUT, initial=GPIO.LOW)
 GPIO.setup(PIN_LED_RED, GPIO.OUT, initial=GPIO.LOW)
 
+
 def light_led(pin, sec=0.1):
     GPIO.output(pin, GPIO.HIGH)
     time.sleep(sec)
     GPIO.output(pin, GPIO.LOW)
+
 
 try:
     while True:
