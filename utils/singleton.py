@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-from typing import Dict, Any
-
 
 class Singleton(type):
-    _instances = Dict[Any, Any]
+    """Singleton metaclass base class
+
+    Returns:
+        __call__: class singleton instance
+    """
+
+    _instances = dict()  # type: ignore
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:

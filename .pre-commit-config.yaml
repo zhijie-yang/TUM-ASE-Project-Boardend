@@ -14,8 +14,8 @@ repos:
     hooks:
       - id: pylint
         name: pylint
-        #        entry: pylint
-        entry: bash -c 'pylint "$@" || true' -- # Use this line to pass for now
+        entry: pylint
+        # entry: bash -c 'pylint "$@" || true' -- # Use this line to pass for now
         language: system
         types: [ python ]
         args:
@@ -27,9 +27,9 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        #        entry: mypy
+        entry: mypy
         verbose: true
-        entry: bash -c 'mypy "$@" || true' -- # Use this line to pass for now
+        # entry: bash -c 'mypy "$@" || true' -- # Use this line to pass for now
         language: system
         types: [ python ]
         exclude: ^tests/
