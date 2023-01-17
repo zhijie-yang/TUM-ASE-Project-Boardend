@@ -21,6 +21,13 @@ class BoxManagerError(Exception):  # pylint: disable=missing-class-docstring
     pass
 
 
+class Roles(enum.Enum):
+    """ Enum of roles
+    """
+    DELIVERER = 0
+    CUSTOMER = 1
+
+
 class BoxManager(object, metaclass=Singleton):
     """ Singleton, manage box manager life cycle
     """
@@ -159,21 +166,31 @@ class BoxManager(object, metaclass=Singleton):
         time.sleep(1.0)
         self._led.turn_off_red()
 
-    def open_by_customer(self):
-        """Transit status to CUSTOMER_OPEN.
+    def open_box(self):
+        """ Transit status to CUSTOMER_OPEN.
         """
         # TODO authentication, and sets the flag
-        flag: bool = True
-        flag = flag and self._sensor.is_closed()
-        # flag = flag and auth.authentication()
+        if not self._sensor.is_closed():
+            with self._lock:
+                self._box_error()
+            logger.error("Box was opened unexpectedly.")
+        # TODO Auth should return tuple(flag: bool, role: Union[Enum[Customer|Deliever]])
+        # (flag, role) = flag and auth.authentication()
+        # DELETE ME when auth is implemented
+        (flag, role) = True, Roles.CUSTOMER
+
         if not flag:
             self._box_error()
             return False
         with self._lock:
-            self._machine.open_by_customer()
+            if role is Roles.CUSTOMER:
+                self._machine.open_by_customer()
+            else:
+                self._machine.open_by_deliverer()
         self._led.turn_on_green()
         self._block_until_closed()
         # TODO update box status
+        # self._network.report_deliver_done()
 
     def __enter__(self):
         return self
