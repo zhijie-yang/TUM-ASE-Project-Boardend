@@ -5,7 +5,7 @@ from utils.singleton import Singleton
 PIN_PHOTO_RESISTOR = 13
 
 
-class PhotoResistor():
+class PhotoResistor(metaclass=Singleton):
     def __init__(self, pin_photo_resistor: int = PIN_PHOTO_RESISTOR):
         self._pin_photo_resistor = pin_photo_resistor
 
@@ -17,13 +17,21 @@ class PhotoResistor():
         return GPIO.input(self._pin_photo_resistor)
 
     def is_closed(self) -> bool:
-        """Returns whether the box lid is closed
+        """ Returns whether the box lid is closed
 
         Returns:
             bool: result
         """
         # TODO find the correct way to measure the photo resistor
         return self._read_sensor() < 1
+
+    def is_opened(self) -> bool:
+        """ Returns whether the box lid is opened
+
+        Returns:
+            bool: result
+        """
+        return not self.is_closed()
 
     def __enter__(self):
         return self
