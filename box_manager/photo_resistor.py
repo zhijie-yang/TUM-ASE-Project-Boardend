@@ -1,32 +1,33 @@
-import RPi.GPIO as GPIO
 import time
-from utils.singleton import Singleton
+import RPi.GPIO as GPIO
+from utils.singleton import Singleton  # pylint: disable=import-error
 
 PIN_PHOTO_RESISTOR = 13
 
 
 class PhotoResistor(metaclass=Singleton):
+    """Photo resistor manager class, running as a singleton"""
+
     def __init__(self, pin_photo_resistor: int = PIN_PHOTO_RESISTOR):
         self._pin_photo_resistor = pin_photo_resistor
 
         GPIO.setmode(GPIO.BOARD)
         GPIO.setwarnings(False)
-        GPIO.setup(PIN_PHOTO_RESISTOR, GPIO.IN)
+        GPIO.setup(PIN_PHOTO_RESISTOR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     def _read_sensor(self):
         return GPIO.input(self._pin_photo_resistor)
 
     def is_closed(self) -> bool:
-        """ Returns whether the box lid is closed
+        """Returns whether the box lid is closed
 
         Returns:
             bool: result
         """
-        # TODO find the correct way to measure the photo resistor
-        return self._read_sensor() < 1
+        return self._read_sensor() == 1
 
     def is_opened(self) -> bool:
-        """ Returns whether the box lid is opened
+        """Returns whether the box lid is opened
 
         Returns:
             bool: result
@@ -48,5 +49,5 @@ def main():  # pylint: disable=missing-function-docstring
             time.sleep(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
