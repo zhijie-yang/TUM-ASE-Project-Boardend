@@ -1,11 +1,11 @@
 import time
 import RPi.GPIO as GPIO
-from utils.singleton import Singleton  # pylint: disable=import-error
+from utils.manager_base import ManagerBase
 
 PIN_PHOTO_RESISTOR = 13
 
 
-class PhotoResistor(metaclass=Singleton):
+class PhotoResistor(ManagerBase):
     """Photo resistor manager class, running as a singleton"""
 
     def __init__(self, pin_photo_resistor: int = PIN_PHOTO_RESISTOR):
@@ -33,12 +33,6 @@ class PhotoResistor(metaclass=Singleton):
             bool: result
         """
         return not self.is_closed()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        GPIO.cleanup()
 
 
 def main():  # pylint: disable=missing-function-docstring
