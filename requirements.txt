@@ -1,2 +1,4 @@
 mfrc522
 transitions
+requests
+yaml
