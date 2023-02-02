@@ -9,6 +9,8 @@ from box_manager.photo_resistor import PhotoResistor
 from rfid_manager.reader import RfidReader
 from utils.configure_reader import BOX_STATUS_REFRESH_INTERVAL
 from utils.manager_base import ManagerBase
+from utils.authenticator import Authenticator
+from utils.configure_reader import ConfigureReader
 
 
 logger = logging.getLogger(__name__)
@@ -35,9 +37,8 @@ class BoxManager(ManagerBase):
         STOPPED = 0
         STANDBY = 1
         STARING = 2
-        CUSTOMER_OPEN = 3
-        DELIVERER_OPEN = 4
-        READER = 5
+        OPEN = 3
+        READER = 4
 
     transitions = [
         ["start", States.STOPPED, States.STARING],
@@ -45,9 +46,8 @@ class BoxManager(ManagerBase):
         ["reset", States.ERROR, States.STOPPED],
         ["start_success", States.STARING, States.STANDBY],
         ["error", "*", States.ERROR],
-        ["open_by_customer", States.STANDBY, States.CUSTOMER_OPEN],
-        ["open_by_deliverer", States.STANDBY, States.DELIVERER_OPEN],
-        ["closed", [States.CUSTOMER_OPEN, States.DELIVERER_OPEN], States.STANDBY],
+        ["opened", States.STANDBY, States.OPEN],
+        ["closed", States.OPEN, States.STANDBY],
     ]
 
     def __init__(self):
@@ -61,6 +61,9 @@ class BoxManager(ManagerBase):
         self._reader = RfidReader()
         self._led = LedManager()
         self._sensor = PhotoResistor()
+        self._config = ConfigureReader()
+
+        self._authencator = Authenticator(self._config.get("backend_url"))
         logger.info("Successfully initialized box manager")
 
     def reset(self):
@@ -94,20 +97,16 @@ class BoxManager(ManagerBase):
                 logger.error(traceback.format_exc())
                 self._machine.error()
                 raise e
-            # wait for success (timeout)
-            cur_t = 0
-            while cur_t < timeout:
-                # TODO only to break if start succeeded
-                if True:
-                    break
-                time.sleep(1)
-                cur_t += 1
-            if cur_t >= timeout:
-                self._machine.error()
-                raise BoxManagerError("Starting timeout")
-            self._machine.start_success()
-            logger.info("Successfully started box manager")
-            return True
+
+            if self._authencator.login(
+                self._config.get("id"), self._config.get("password")
+            ):
+                self._machine.start_success()
+                logger.info("Successfully started box manager")
+                return True
+            else:
+                logger.error("Fail to register delivery box to backend!!")
+                return False
 
     @staticmethod
     def _check_closed_timeout(start_time: float, timeout: float = 10.0) -> bool:
@@ -134,6 +133,9 @@ class BoxManager(ManagerBase):
 
         Args:
             timeout (float, optional): _description_. Defaults to 10.0.
+
+        Returns:
+            bool: if box is opened before it closes
         """
         if not self._led.get_status_green():
             self._box_error()
@@ -149,7 +151,7 @@ class BoxManager(ManagerBase):
                     self._machine.closed()
                 self._led.turn_off_green()
                 logger.info("Box did not open within timeout. Auth cancelled.")
-                return
+                return False
             logger.debug("box opened: {}".format(self._sensor.is_opened()))
             if self._sensor.is_opened():
                 opened_before = True
@@ -173,17 +175,22 @@ class BoxManager(ManagerBase):
             self._led.turn_off_red()
         if opened_before:
             logger.info("Box closed.")
+            return True
+        return False
 
     def _box_error(self):
-        with self._lock:
-            self._machine.error()
+        # with self._lock:
+        # self._machine.error()
+        self._led.turn_on_red()
+        time.sleep(1.0)
+        self._led.turn_off_red()
 
     def _auth_error(self):
         self._led.turn_on_red()
         time.sleep(1.0)
         self._led.turn_off_red()
 
-    def open_box(self, uid, username) -> bool:
+    def open_box(self, uid, token) -> bool:
         """Transit status to CUSTOMER_OPEN."""
         # TODO authentication, and sets the flag
         if not self._sensor.is_closed():
@@ -193,25 +200,19 @@ class BoxManager(ManagerBase):
         # TODO Auth should return tuple(flag: bool, role: Union[Enum[Customer|Deliever]])
         # (flag, role) = flag and auth.authentication()
         # DELETE ME when auth is implemented
-        (flag, role) = True, Roles.CUSTOMER
+        # (flag, role) = True, Roles.CUSTOMER
+        flag = self._authencator.auth(self._config.get("id"), token)
 
         if not flag:
+            logger.error("Authentication failed.")
             self._box_error()
             return False
-        logger.info(
-            "User {}, uid={} is authorized to open with role {}".format(
-                uid, username, role
-            )
-        )
+        logger.info("User {}, uid={} is authorized to open".format(uid, token))
         with self._lock:
-            if role is Roles.CUSTOMER:
-                self._machine.open_by_customer()
-            else:
-                self._machine.open_by_deliverer()
+            self._machine.opened()
         self._led.turn_on_green()
-        self._block_until_closed()
-        # TODO update box status
-        # self._network.report_deliver_done()
+        if self._block_until_closed():
+            self._authencator.update_box(self._config.get("id"), token)
         return True
 
     def routine_loop(self):
@@ -219,9 +220,9 @@ class BoxManager(ManagerBase):
         if self._sensor.is_opened():
             logger.error("Box was oopened without token!")
         # TODO put requests here to read from backend for commands
-        uid, username = self._reader.read()
+        uid, token = self._reader.read()
         if uid is not None:
-            self.open_box(uid, username)
+            self.open_box(uid, token.strip())
 
     # exc_type: type, exc_value: Exception, tb: traceback.TracebackException
     def __exit__(self, *args):

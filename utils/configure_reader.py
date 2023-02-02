@@ -15,7 +15,7 @@ class ConfigureReader:
 
     def __init__(self, file_path: str = "config.yaml"):
         self._file_path = file_path
-        self.required_entries = ["name", "id", "address"]
+        self.required_entries = ["name", "id", "password", "address", "backend_url"]
         self._configs = {}  # type: ignore
 
         self._read_config()

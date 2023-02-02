@@ -1,3 +1,5 @@
 name: "Box from Group 13"
-id: 13
+id: "group13"
+password: "VeryStrongPassword"
 address: "Boltzmannstr. 3, 85748 Muenchen"
+backend_url: "http://192.168.3.35:8080"
