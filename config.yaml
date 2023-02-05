@@ -1,0 +1,5 @@
+name: "Box from Group 13"
+id: "group13"
+password: "VeryStrongPassword"
+address: "Boltzmannstr. 3, 85748 Muenchen"
+backend_url: "https://3.76.82.97:8080"
