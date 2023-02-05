@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 class Authenticator(ManagerBase):
     def __init__(self, backend_url: str):
         self.url = backend_url
-        self.csrf = req.get(self.url + "/auth/csrf")
-        self.pkey = req.get(self.url + "/auth/pkey")
-        self.pem = req.get(self.url + "/auth/pem")
-        self.csrf_delivery = req.get(self.url + "/delivery/csrf")
+        self.csrf = req.get(self.url + "/auth/csrf", verify=False)
+        self.pkey = req.get(self.url + "/auth/pkey", verify=False)
+        self.pem = req.get(self.url + "/auth/pem", verify=False)
+        self.csrf_delivery = req.get(self.url + "/delivery/csrf", verify=False)
         self.jwt_cookie = None
 
     def login(self, username: str, password: str) -> bool:
@@ -32,6 +32,7 @@ class Authenticator(ManagerBase):
             json={"username": username, "password": password},
             cookies=self.csrf.cookies,
             headers=self.csrf.cookies.get_dict(),
+            verify=False
         )
         self.jwt_cookie = r.cookies
         logger.info("Login status code: {}, text {}.".format(r.status_code, r.text))
@@ -50,6 +51,7 @@ class Authenticator(ManagerBase):
         r = req.get(
             self.url + "/order/list/{}?token={}".format(username, token),
             cookies=self.jwt_cookie,
+            verify=False
         )
         logger.info("Auth status code: {}, text {}.".format(r.status_code, r.text))
         if r.status_code != 200:
@@ -75,6 +77,7 @@ class Authenticator(ManagerBase):
             self.url + "/order/change-status/{}/{}".format(username, token),
             cookies=fake_cookie,
             headers=self.csrf_delivery.cookies.get_dict(),
+            verify=False
         )
         logger.info(
             "Box update status code: {}, text {}.".format(r.status_code, r.text)
